@@ -32,6 +32,7 @@ import PrimeNumberTheoremAnd.IEANTN.KLN
 import PrimeNumberTheoremAnd.IEANTN.Lcm
 import PrimeNumberTheoremAnd.IEANTN.Li2Bounds
 import PrimeNumberTheoremAnd.IEANTN.Mertens
+import PrimeNumberTheoremAnd.ObserverMertensAdapter
 import PrimeNumberTheoremAnd.IEANTN.MobiusLemma
 import PrimeNumberTheoremAnd.IEANTN.PrimaryDefinitions
 import PrimeNumberTheoremAnd.IEANTN.PrimarySummary
