@@ -2837,7 +2837,16 @@ lemma tendsto_contour_shift {σ σ' : ℝ} {f : ℂ → ℂ}
       rw [show 0 + (0 * 0 + 1 * U) = U by ring]
       rw [intervalIntegral.integral_of_le hU, MeasureTheory.integral_Icc_eq_integral_Ioc]
       congr 1; funext y; congr 1; ring
-    rw [h1, h2, h3, h4]
+    have h2' : ∫ (x : ℝ) in σ..σ', f (↑x + ↑(I * ↑U).im * I) =
+        ∫ x in σ..σ', f (↑x + ↑U * I) := by simp
+    have h3' : ∫ (y : ℝ) in 0..U, f (↑σ' + ↑y * I) =
+        ∫ y in Set.Icc 0 U, f (↑σ' + I * ↑y) := by simpa [Complex.I_mul_re, Complex.I_mul_im] using h3
+    have h4' : ∫ (y : ℝ) in 0..U, f (↑σ + ↑y * I) =
+        ∫ y in Set.Icc 0 U, f (↑σ + I * ↑y) := by simpa [Complex.I_mul_im] using h4
+    simp only [Complex.I_mul_re, Complex.I_mul_im, Complex.ofReal_re, Complex.ofReal_im,
+      neg_zero, zero_add, add_zero, sub_zero]
+    rw [← h1, ← h2, h3', h4']
+    simp [Complex.I_mul_re, Complex.I_mul_im, Complex.ofReal_im]
   have h_UpperU_zero : UpperUIntegral f σ σ' 0 = 0 := by
     have h1 := RectangleIntegral_tendsTo_UpperU' htop hleft hright
     have e : (↑σ + I * ↑(0:ℝ) : ℂ) = ↑σ := by simp
@@ -3373,6 +3382,8 @@ private lemma two_sub_E_sq (x : ℝ) : (2 : ℂ) - E ↑x - E (-↑x) = 4 * (Rea
     ring_nf; linear_combination -4 * Complex.sin_sq_add_cos_sq (z * (1 / 2))]
   simp; ring_nf
 
+set_option maxHeartbeats 800000 in
+-- The affine-periodicity simplification in this lemma is heartbeat-heavy on Lean 4.30.
 /-- At a point `z = -1 + i t` on the vertical line `Re z = -1` (with `t ≥ 0`), the combination
 `Φ_circ - Φ_star` equals `-Φ_star` evaluated on the imaginary axis at `i t`.
 -/
@@ -3547,7 +3558,20 @@ lemma tendsto_contour_shift_downwards {σ σ' : ℝ} {f : ℂ → ℂ}
       rw [intervalIntegral.integral_symm, intervalIntegral.integral_of_le hT, MeasureTheory.integral_Icc_eq_integral_Ioc]
       simp only [neg_zero]
       exact congr_arg Neg.neg (integral_congr_ae (Filter.Eventually.of_forall fun y ↦ by push_cast; ring_nf))
-    rw [h1, h2, h3, h4]
+    have h2' : ∫ (x : ℝ) in σ..σ', f (↑x + ↑(-(I * ↑T).im) * I) =
+        ∫ t in σ..σ', f (↑t - I * ↑T) := by
+      apply intervalIntegral.integral_congr
+      intro x _
+      simp [Complex.I_mul_im]
+      ring
+    have h3' : ∫ (y : ℝ) in 0..0 - T, f (↑σ' + ↑y * I) =
+        -∫ t in Set.Icc 0 T, f (↑σ' - I * ↑t) := by simpa [Complex.I_mul_re, Complex.I_mul_im] using h3
+    have h4' : ∫ (y : ℝ) in 0..0 - T, f (↑σ + ↑y * I) =
+        -∫ t in Set.Icc 0 T, f (↑σ - I * ↑t) := by simpa [Complex.I_mul_im] using h4
+    simp only [Complex.I_mul_re, Complex.I_mul_im, Complex.ofReal_re, Complex.ofReal_im,
+      neg_zero, zero_add, add_zero, sub_zero]
+    rw [← h1, ← h2, h3', h4']
+    simp [Complex.I_mul_re, Complex.I_mul_im, Complex.ofReal_im]
     ring
 
   have h_zero : Filter.Tendsto (fun (T : ℝ) ↦ RectangleIntegral f σ (σ' - I * T)) Filter.atTop (nhds 0) :=
@@ -3719,8 +3743,9 @@ lemma Phi_fourier_holo_left (ν ε x : ℝ) (hν : ν > 0) :
         exact hz₀ (Complex.ext
           (by
             dsimp [z₀, z₀_pole]
-            rw [h_re, Complex.div_im, Complex.ofReal_im, Complex.mul_im, Complex.ofReal_im]
-            simp
+            rw [h_re]
+            rw [show (2 : ℂ) * ↑π = ↑(2 * π) by push_cast; ring]
+            simp [Complex.div_im]
           )
           (by rw [h_im]; dsimp [z₀, z₀_pole]; simp; norm_cast; ring))
       have h_anal_z : AnalyticAt ℂ g z := by
@@ -3783,7 +3808,9 @@ lemma Phi_fourier_holo_right (ν ε x : ℝ) (hν : ν > 0) :
         have : z = z₁ := by
           apply Complex.ext <;> dsimp [z₁, z₁_pole]
           · rw [h_re]; simp; norm_cast
-          · rw [h_im]; norm_cast; simp; ring
+          · rw [h_im]
+            simp [Complex.I_mul_im, Complex.div_re]
+            field_simp [Real.pi_ne_zero]
         exact hz₁ this
       have h_anal_z : AnalyticAt ℂ g z := by
         have h_eq : g =ᶠ[nhds z] f := by
@@ -3908,7 +3935,10 @@ theorem shift_downwards (ν ε : ℝ) (hν : ν > 0) (x : ℝ) (hx : x > 0) :
         · filter_upwards with t ht; dsimp [fL]; push_cast; simp only [neg_div]; apply hg_eq
           intro h
           simp only [one_div] at h
-          apply absurd (Complex.ext_iff.mp h).1 (by dsimp [z₀_pole]; norm_cast; simp)
+          apply absurd (Complex.ext_iff.mp h).1 (by
+            dsimp [z₀_pole]
+            rw [show (2 : ℂ) * ↑π = ↑(2 * π) by push_cast; ring]
+            norm_num [Complex.div_im])
       · congr 1
         apply MeasureTheory.setIntegral_congr_ae
         · exact measurableSet_Icc

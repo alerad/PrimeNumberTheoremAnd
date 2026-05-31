@@ -573,6 +573,22 @@ theorem sum_log_prime_div_eq_log {x : ℝ} (hx : 1 ≤ x) :
 theorem E₁p.bounded : ∃ c > 0, ∀ x ≥ 1, |E₁p x| ≤ c := by
   exact ⟨log 4 + 4, (by positivity), fun _ hx ↦ sum_log_prime_div_eq_log  hx⟩
 
+theorem E₁p.bounded_weak : ∃ c > 0, ∀ x ≥ 1, |E₁p x| ≤ c := by
+  refine ⟨max (log 4 + 4) (2 + E₁), ?_, ?_⟩
+  · have hpos : 0 < 2 + E₁ := by
+      have hE : 0 ≤ E₁ := E₁.nonneg
+      linarith
+    exact lt_of_lt_of_le hpos (le_max_right _ _)
+  · intro x hx
+    rw [abs_le]
+    constructor
+    · have hge := E₁p.ge hx
+      have hC : 2 + E₁ ≤ max (log 4 + 4) (2 + E₁) := le_max_right _ _
+      linarith
+    · have hle := E₁p.le hx
+      have hC : log 4 + 4 ≤ max (log 4 + 4) (2 + E₁) := le_max_left _ _
+      linarith
+
 @[blueprint
   "Mertens-first-theorem-prime-bounded"]
 theorem sum_log_prime_div_eq_log' : E₁p =O[atTop] (fun _ ↦ (1:ℝ)) := by
@@ -686,7 +702,7 @@ private theorem integrable_E₁Λ_div_mul_log_sq {x : ℝ} (hx : 2 ≤ x) :
 
 private theorem integrable_E₁p_div_mul_log_sq {x : ℝ} (hx : 2 ≤ x) :
     MeasureTheory.IntegrableOn (fun x ↦ E₁p x / (x * log x ^ 2)) (Set.Ioi x) MeasureTheory.volume := by
-  obtain ⟨c, hc1, hc2⟩ := E₁p.bounded
+  obtain ⟨c, hc1, hc2⟩ := E₁p.bounded_weak
   apply MeasureTheory.Integrable.mono (integrable_const_div_mul_log_sq c hx)
   · exact Measurable.aestronglyMeasurable (by fun_prop)
   · filter_upwards [MeasureTheory.ae_restrict_mem (by measurability)] with t ht
@@ -1201,6 +1217,84 @@ theorem M.eq : M = γ + ∑' p : ℕ, if p.Prime then log (1 - 1 / p) + 1 / p el
 -/)]
 noncomputable def E₃ (x : ℝ) : ℝ := ∑ p ∈ Ioc 0 ⌊ x ⌋₊ with p.Prime, log (1 - (1:ℝ) / p) + log (log x) + eulerMascheroniConstant
 
+/-- Prime logarithmic correction term. -/
+noncomputable abbrev E₃_L (n : ℕ) : ℝ :=
+  if n.Prime then log (1 - (1 : ℝ) / n) + (1 : ℝ) / n else 0
+
+lemma E₃_L_eq_neg_tsum {p : ℕ} (hp : p.Prime) :
+    E₃_L p =
+      - ∑' k : ℕ, (1 : ℝ) / ((k + 2) * (p : ℝ) ^ (k + 2)) := by
+  unfold E₃_L
+  simp [hp]
+  have h := HasSum_log_one_sub_one_div_prime hp
+  rw [show log (1 - (↑p)⁻¹) = log (1 - 1 / (p : ℝ)) by ring_nf]
+  rw [← h.tsum_eq, h.summable.tsum_eq_zero_add]
+  rw [← tsum_neg]
+  have hcancel : (-1 : ℝ) / (p : ℝ) + (p : ℝ)⁻¹ = 0 := by
+    field_simp [show (p : ℝ) ≠ 0 by exact_mod_cast hp.ne_zero]
+    ring
+  have htail :
+      (∑' b : ℕ, (-1 : ℝ) / ((((b + 1 : ℕ) : ℝ) + 1) * (p : ℝ) ^ (b + 1 + 1)))
+        = ∑' k : ℕ, -(((p : ℝ) ^ (k + 2))⁻¹ * ((k : ℝ) + 2)⁻¹) := by
+    exact tsum_congr fun k ↦ by
+      norm_num
+      field_simp [show (p : ℝ) ≠ 0 by exact_mod_cast hp.ne_zero]
+      ring
+  calc
+    (-1 : ℝ) / ((((0 : ℕ) : ℝ) + 1) * (p : ℝ) ^ (0 + 1)) +
+        (∑' b : ℕ, (-1 : ℝ) / ((((b + 1 : ℕ) : ℝ) + 1) * (p : ℝ) ^ (b + 1 + 1))) +
+        (p : ℝ)⁻¹
+        = ∑' b : ℕ, (-1 : ℝ) / ((((b + 1 : ℕ) : ℝ) + 1) * (p : ℝ) ^ (b + 1 + 1)) := by
+          rw [show (-1 : ℝ) / ((((0 : ℕ) : ℝ) + 1) * (p : ℝ) ^ (0 + 1)) = (-1 : ℝ) / (p : ℝ) by ring]
+          rw [show (-1 : ℝ) / (p : ℝ) +
+              (∑' b : ℕ, (-1 : ℝ) / ((((b + 1 : ℕ) : ℝ) + 1) * (p : ℝ) ^ (b + 1 + 1))) +
+              (p : ℝ)⁻¹ =
+              ((-1 : ℝ) / (p : ℝ) + (p : ℝ)⁻¹) +
+              (∑' b : ℕ, (-1 : ℝ) / ((((b + 1 : ℕ) : ℝ) + 1) * (p : ℝ) ^ (b + 1 + 1))) by ring]
+          simp [hcancel]
+    _ = ∑' k : ℕ, -(((p : ℝ) ^ (k + 2))⁻¹ * ((k : ℝ) + 2)⁻¹) := htail
+
+lemma abs_E₃_L_le (n : ℕ) :
+    |E₃_L n| ≤
+      if 2 ≤ n then (1 : ℝ) / ((n : ℝ) * ((n : ℝ) - 1)) else 0 := by
+  sorry
+
+lemma summable_E₃_L : Summable E₃_L := by
+  sorry
+
+lemma E₃_L_tail_le {x : ℝ} (hx : 2 ≤ x) :
+    |(∑ n ∈ Ioc 0 ⌊x⌋₊, E₃_L n) - ∑' n : ℕ, E₃_L n|
+      ≤ 2 / log x := by
+  sorry
+
+lemma E₃_eq_neg_E₂p_add_tail {x : ℝ} (hx : 2 ≤ x) :
+    E₃ x =
+      - E₂p x +
+        ((∑ n ∈ Ioc 0 ⌊x⌋₊, E₃_L n) - ∑' n : ℕ, E₃_L n) := by
+  have hγ : γ = eulerMascheroniConstant := γ.eq_eulerMascheroni
+  have hM := M.eq
+  have hsum_L :
+      (∑ n ∈ Ioc 0 ⌊x⌋₊,
+          if n.Prime then log (1 - (1 : ℝ) / n) + (1 : ℝ) / n else 0) =
+        (∑ n ∈ Ioc 0 ⌊x⌋₊, if n.Prime then log (1 - (1 : ℝ) / n) else 0) +
+          (∑ n ∈ Ioc 0 ⌊x⌋₊, if n.Prime then (1 : ℝ) / n else 0) := by
+    rw [← sum_add_distrib]
+    refine sum_congr rfl ?_
+    intro n hn
+    by_cases hnp : n.Prime <;> simp [hnp, add_comm]
+  change
+    (∑ p ∈ Ioc 0 ⌊x⌋₊ with p.Prime, log (1 - (1 : ℝ) / p)) +
+        log (log x) + eulerMascheroniConstant =
+      - ((∑ p ∈ Ioc 0 ⌊x⌋₊ with p.Prime, (1 : ℝ) / p) - log (log x) - M) +
+        ((∑ n ∈ Ioc 0 ⌊x⌋₊,
+            if n.Prime then log (1 - (1 : ℝ) / n) + (1 : ℝ) / n else 0) -
+          ∑' n : ℕ, if n.Prime then log (1 - (1 : ℝ) / n) + (1 : ℝ) / n else 0)
+  rw [← hγ]
+  rw [hM]
+  repeat rw [sum_filter]
+  rw [hsum_L]
+  ring_nf
+
 @[blueprint
   "Mertens-third-theorem-error"
   (title := "Mertens' third theorem error term")
@@ -1235,7 +1329,26 @@ One can bound $\sum_{j \geq 2: p^j > x} \frac{j}{p^j}$ by $O(1/p^2)$ when $p > \
   -/)
   (discussion := 1330)]
 theorem E₃.abs_le : ∃ C, ∀ x, 2 ≤ x → |E₃ x| ≤ C / log x := by
-    sorry
+  refine ⟨log 4 + 8 + E₁, ?_⟩
+  intro x hx
+  have hlog_pos : 0 < log x := log_pos (by linarith)
+  rw [E₃_eq_neg_E₂p_add_tail hx]
+  calc
+    |-E₂p x +
+        ((∑ n ∈ Ioc 0 ⌊x⌋₊, E₃_L n) - ∑' n : ℕ, E₃_L n)|
+        ≤ |-E₂p x| +
+          |(∑ n ∈ Ioc 0 ⌊x⌋₊, E₃_L n) - ∑' n : ℕ, E₃_L n| := by
+            exact
+              abs_add_le (-E₂p x)
+                ((∑ n ∈ Ioc 0 ⌊x⌋₊, E₃_L n) - ∑' n : ℕ, E₃_L n)
+    _ ≤ (log 4 + 6 + E₁) / log x + 2 / log x := by
+            gcongr
+            · rw [abs_neg]
+              exact E₂p.abs_le hx
+            · exact E₃_L_tail_le hx
+    _ = (log 4 + 8 + E₁) / log x := by
+            field_simp [hlog_pos.ne']
+            ring
 
 @[blueprint
   "Mertens-third-theorem-error-le"]
@@ -1268,6 +1381,37 @@ theorem E₃.bound'' : (fun x ↦ ∏ p ∈ Ioc 0 ⌊ x ⌋₊ with p.Prime, (1 
 @[blueprint
   "Mertens-third-theorem-error-le"]
 theorem E₃.bound''' : (fun x ↦ ∏ p ∈ Ioc 0 ⌊ x ⌋₊ with p.Prime, (1 - (1:ℝ) / p) - exp (-eulerMascheroniConstant) / log x) =O[atTop] (fun x ↦ 1 / (log x)^2) := by
-    sorry
+  have hE3_to_zero : Tendsto E₃ atTop (nhds 0) := by
+    exact (isLittleO_one_iff ℝ).mp E₃.bound'
+  have h_exp_sub :
+      (fun y : ℝ => exp y - 1) =O[nhds 0] (fun y : ℝ => y) := by
+    simpa using (Real.hasDerivAt_exp (0 : ℝ)).isBigO_sub
+  have h_exp_E3 :
+      (fun x : ℝ => exp (E₃ x) - 1)
+        =O[atTop] (fun x : ℝ => 1 / log x) := by
+    exact (h_exp_sub.comp_tendsto hE3_to_zero).trans E₃.bound
+  have h_prefactor :
+      (fun x : ℝ => exp (-eulerMascheroniConstant) / log x)
+        =O[atTop] (fun x : ℝ => 1 / log x) := by
+    simpa [div_eq_mul_inv] using
+      (isBigO_const_mul_self
+        (c := exp (-eulerMascheroniConstant))
+        (f := fun x : ℝ => (log x)⁻¹)
+        (l := atTop))
+  have hprod :
+      (fun x ↦
+        ∏ p ∈ Ioc 0 ⌊ x ⌋₊ with p.Prime, (1 - (1:ℝ) / p)
+          - exp (-eulerMascheroniConstant) / log x)
+      =ᶠ[atTop]
+      (fun x ↦
+        (exp (-eulerMascheroniConstant) / log x) *
+          (exp (E₃ x) - 1)) := by
+    filter_upwards [eventually_ge_atTop (2 : ℝ)] with x hx
+    rw [prod_one_minus_div_prime_eq (by linarith)]
+    have hlog : log x ≠ 0 := (log_pos (by linarith)).ne'
+    field_simp [hlog]
+  have hmul := h_prefactor.mul h_exp_E3
+  exact hprod.trans_isBigO (by
+    simpa [one_div, pow_two, mul_assoc] using hmul)
 
 end Mertens

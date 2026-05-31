@@ -259,9 +259,10 @@ lemma RectangleIntegralHSplit {a x₀ x₁ y₀ y₁ : ℝ}
     (f_int_a_x₁_top : IntervalIntegrable (fun x => f (↑x + ↑y₁ * I)) volume a x₁) :
     RectangleIntegral f (x₀ + y₀ * I) (x₁ + y₁ * I) =
       RectangleIntegral f (x₀ + y₀ * I) (a + y₁ * I) +
-      RectangleIntegral f (a + y₀ * I) (x₁ + y₁ * I) := by
+  RectangleIntegral f (a + y₀ * I) (x₁ + y₁ * I) := by
   dsimp [RectangleIntegral, HIntegral, VIntegral]
-  simp only [mul_one, mul_zero, add_zero, zero_add, sub_self]
+  simp only [ofReal_re, mul_re, I_re, mul_zero, ofReal_im, I_im,
+    mul_one, sub_self, add_zero, mul_im, zero_add]
   have h₁ := integral_add_adjacent_intervals f_int_x₀_a_bot f_int_a_x₁_bot
   have h₂ := integral_add_adjacent_intervals f_int_x₀_a_top f_int_a_x₁_top
   additive_combination - h₁ + h₂
@@ -287,7 +288,8 @@ lemma RectangleIntegralVSplit {b x₀ x₁ y₀ y₁ : ℝ}
       RectangleIntegral f (x₀ + y₀ * I) (x₁ + b * I) +
       RectangleIntegral f (x₀ + b * I) (x₁ + y₁ * I) := by
   dsimp [RectangleIntegral, HIntegral, VIntegral]
-  simp only [mul_one, mul_zero, add_zero, zero_add, sub_self]
+  simp only [ofReal_re, mul_re, I_re, mul_zero, ofReal_im, I_im,
+    mul_one, sub_self, add_zero, mul_im, zero_add]
   have h₁ := integral_add_adjacent_intervals f_int_y₀_b_left f_int_b_y₁_left
   have h₂ := integral_add_adjacent_intervals f_int_y₀_b_right f_int_b_y₁_right
   rw [← h₁, ← h₂]

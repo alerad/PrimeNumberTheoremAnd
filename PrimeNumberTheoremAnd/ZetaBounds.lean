@@ -867,9 +867,9 @@ lemma ZetaSum_aux1₁ {a b : ℕ} {s : ℂ} (s_ne_one : s ≠ 1) (ha : a ∈ Ioo
 
 lemma ZetaSum_aux1φDiff {s : ℂ} {x : ℝ} (xpos : 0 < x) :
     HasDerivAt (fun (t : ℝ) ↦ 1 / (t : ℂ) ^ s) (deriv (fun (t : ℝ) ↦ 1 / (t : ℂ) ^ s) x) x := by
-  apply hasDerivAt_deriv_iff.mpr <| DifferentiableAt.div (differentiableAt_const _) ?_ ?_
-  · exact Real.differentiableAt_cpow_const_of_ne s xpos
-  · simp [cpow_eq_zero_iff, xpos.ne']
+  exact hasDerivAt_deriv_iff.mpr <|
+    DifferentiableAt.div (differentiableAt_const _) (Real.differentiableAt_cpow_const_of_ne s xpos)
+      (by simp [cpow_eq_zero_iff, xpos.ne'])
 
 lemma ZetaSum_aux1φderiv {s : ℂ} (s_ne_zero : s ≠ 0) {x : ℝ} (xpos : 0 < x) :
     deriv (fun (t : ℝ) ↦ 1 / (t : ℂ) ^ s) x = (fun (x : ℝ) ↦ -s * (x : ℂ) ^ (-(s + 1))) x := by
