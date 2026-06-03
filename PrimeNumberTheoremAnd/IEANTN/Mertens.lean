@@ -1102,6 +1102,185 @@ lemma HasSum_log_one_sub_one_div_prime {p : ℕ} (hp : p.Prime) :
   · simp only [one_div, abs_inv, Nat.abs_cast]
     exact inv_lt_one_of_one_lt₀ (mod_cast hp.one_lt)
 
+private lemma prime_log_correction_nonpos {p : ℕ} (hp : p.Prime) :
+    log (1 - (1 : ℝ) / p) + 1 / p ≤ 0 := by
+  have hp_pos : (0 : ℝ) < p := by exact_mod_cast hp.pos
+  have hp_one_lt : (1 : ℝ) < p := by exact_mod_cast hp.one_lt
+  have hpos : 0 < 1 - (1 : ℝ) / p := by
+    have : (1 : ℝ) / p < 1 := by
+      simpa [one_div] using inv_lt_one_of_one_lt₀ hp_one_lt
+    linarith
+  have hlog := log_le_sub_one_of_pos hpos
+  linarith
+
+private lemma prime_log_correction_abs_le {p : ℕ} (hp : p.Prime) :
+    |log (1 - (1 : ℝ) / p) + 1 / p| ≤ 1 / ((p : ℝ) * (p - 1)) := by
+  have hp_pos : (0 : ℝ) < p := by exact_mod_cast hp.pos
+  have hp_one_lt : (1 : ℝ) < p := by exact_mod_cast hp.one_lt
+  let t : ℝ := 1 / p
+  have ht_pos : 0 < t := by positivity
+  have ht_lt_one : t < 1 := by
+    simpa [t, one_div] using inv_lt_one_of_one_lt₀ hp_one_lt
+  have h1mt_pos : 0 < 1 - t := by linarith
+  have h_nonpos : log (1 - t) + t ≤ 0 := by
+    have hlog := log_le_sub_one_of_pos h1mt_pos
+    linarith
+  have hlog_ge : -(t / (1 - t)) ≤ log (1 - t) := by
+    have h := one_sub_inv_le_log_of_pos h1mt_pos
+    have hrew : (1 : ℝ) - (1 - t)⁻¹ = -(t / (1 - t)) := by
+      field_simp [ne_of_gt h1mt_pos]
+      ring
+    simpa [hrew] using h
+  have hmain : -(log (1 - t) + t) ≤ t ^ 2 / (1 - t) := by
+    have hneglog : -log (1 - t) ≤ t / (1 - t) := by linarith
+    calc
+      -(log (1 - t) + t) = -log (1 - t) - t := by ring
+      _ ≤ t / (1 - t) - t := by linarith
+      _ = t ^ 2 / (1 - t) := by
+        field_simp [ne_of_gt h1mt_pos]
+        ring
+  rw [show log (1 - (1 : ℝ) / p) + 1 / p = log (1 - t) + t by rfl,
+    abs_of_nonpos h_nonpos]
+  calc
+    -(log (1 - t) + t) ≤ t ^ 2 / (1 - t) := hmain
+    _ = 1 / ((p : ℝ) * (p - 1)) := by
+      change (1 / (p : ℝ)) ^ 2 / (1 - 1 / (p : ℝ)) = 1 / ((p : ℝ) * (p - 1))
+      field_simp [ne_of_gt hp_pos, sub_ne_zero.mpr (ne_of_gt hp_one_lt)]
+
+private noncomputable def logPrimeCorrection (n : ℕ) : ℝ :=
+  if n.Prime then log (1 - (1 : ℝ) / n) + 1 / n else 0
+
+private noncomputable def logPrimeCorrectionBound (n : ℕ) : ℝ :=
+  if 2 ≤ n then 1 / ((n : ℝ) * (n - 1)) else 0
+
+private lemma logPrimeCorrection_zero : logPrimeCorrection 0 = 0 := by
+  simp [logPrimeCorrection]
+
+private lemma logPrimeCorrection_one : logPrimeCorrection 1 = 0 := by
+  norm_num [logPrimeCorrection, Nat.not_prime_one]
+
+private lemma logPrimeCorrection_nonpos (n : ℕ) :
+    logPrimeCorrection n ≤ 0 := by
+  unfold logPrimeCorrection
+  split_ifs with hn
+  · exact prime_log_correction_nonpos hn
+  · rfl
+
+private lemma logPrimeCorrection_abs_le_bound (n : ℕ) :
+    |logPrimeCorrection n| ≤ logPrimeCorrectionBound n := by
+  by_cases hn : n.Prime
+  · simp only [logPrimeCorrection, logPrimeCorrectionBound, if_pos hn, if_pos hn.two_le]
+    simpa [one_div, mul_comm, mul_left_comm, mul_assoc] using prime_log_correction_abs_le hn
+  · rw [show logPrimeCorrection n = 0 by simp [logPrimeCorrection, hn], abs_zero]
+    unfold logPrimeCorrectionBound
+    split_ifs with htwo
+    · have hnpos : (0 : ℝ) < n := by exact_mod_cast lt_of_lt_of_le zero_lt_two htwo
+      have hn1 : (1 : ℝ) < n := by exact_mod_cast lt_of_lt_of_le one_lt_two htwo
+      positivity
+    · rfl
+
+private lemma logPrimeCorrectionBound_nonneg (n : ℕ) :
+    0 ≤ logPrimeCorrectionBound n := by
+  unfold logPrimeCorrectionBound
+  split_ifs with hn
+  · have hnpos : (0 : ℝ) < n := by exact_mod_cast lt_of_lt_of_le zero_lt_two hn
+    have hn1 : (1 : ℝ) < n := by exact_mod_cast lt_of_lt_of_le one_lt_two hn
+    positivity
+  · rfl
+
+private lemma logPrimeCorrection_abs_le_pseries (n : ℕ) :
+    |logPrimeCorrection n| ≤ 1 / |(n : ℝ) - 1| ^ (2 : ℝ) := by
+  calc
+    |logPrimeCorrection n| ≤ logPrimeCorrectionBound n := logPrimeCorrection_abs_le_bound n
+    _ ≤ 1 / |(n : ℝ) - 1| ^ (2 : ℝ) := by
+      unfold logPrimeCorrectionBound
+      split_ifs with hn
+      · have hn2 : (2 : ℝ) ≤ n := by exact_mod_cast hn
+        have hnpos : (0 : ℝ) < n := by positivity
+        have hn1pos : 0 < (n : ℝ) - 1 := by linarith
+        have hden_pos : 0 < (n : ℝ) * (n - 1) := by positivity
+        have hden2_pos : 0 < |(n : ℝ) - 1| ^ (2 : ℝ) := by
+          rw [Real.rpow_two]
+          exact sq_pos_of_ne_zero (by positivity)
+        rw [div_le_div_iff₀ hden_pos hden2_pos]
+        rw [abs_of_pos hn1pos]
+        rw [Real.rpow_two]
+        nlinarith
+      · positivity
+
+private lemma logPrimeCorrection_summable : Summable logPrimeCorrection := by
+  refine Summable.of_norm_bounded (f := logPrimeCorrection)
+    (g := fun n : ℕ ↦ 1 / |(n : ℝ) - 1| ^ (2 : ℝ)) ?_ ?_
+  · simpa [sub_eq_add_neg] using (Real.summable_one_div_nat_add_rpow (-1) 2).2 (by norm_num)
+  · intro n
+    simpa [Real.norm_eq_abs] using logPrimeCorrection_abs_le_pseries n
+
+private lemma sum_logPrimeCorrection_range (N : ℕ) :
+    ∑ n ∈ range (N + 1), logPrimeCorrection n =
+      ∑ p ∈ Ioc 0 N with p.Prime, (log (1 - (1 : ℝ) / p) + 1 / p) := by
+  rw [sum_filter]
+  rw [Nat.range_eq_Icc_zero_sub_one (N + 1) (by omega), add_tsub_cancel_right,
+    ← add_sum_Ioc_eq_sum_Icc (show 0 ≤ N by omega)]
+  simp [logPrimeCorrection]
+
+private lemma sum_logPrimeCorrectionBound_tail_le (N M : ℕ) (hN : 1 ≤ N) :
+    ∑ i ∈ range M, logPrimeCorrectionBound (i + (N + 1)) ≤ 1 / (N : ℝ) := by
+  have hterm : ∀ i : ℕ,
+      logPrimeCorrectionBound (i + (N + 1)) =
+        1 / ((i + N : ℕ) : ℝ) - 1 / ((i + N + 1 : ℕ) : ℝ) := by
+    intro i
+    have hge : 2 ≤ i + (N + 1) := by omega
+    have hpos₁ : (0 : ℝ) < (i + N : ℕ) := by exact_mod_cast (by omega : 0 < i + N)
+    have hpos₂ : (0 : ℝ) < (i + N + 1 : ℕ) := by positivity
+    unfold logPrimeCorrectionBound
+    simp only [hge, if_true, Nat.cast_add, Nat.cast_one, one_div, mul_inv_rev]
+    rw [show ((i : ℝ) + ((N : ℝ) + 1) - 1) = (i : ℝ) + N by ring,
+      show ((i : ℝ) + ((N : ℝ) + 1)) = (i : ℝ) + N + 1 by ring]
+    have ha : (i : ℝ) + N ≠ 0 := by positivity
+    have hb : (i : ℝ) + N + 1 ≠ 0 := by positivity
+    rw [inv_sub_inv (a := (i : ℝ) + N) (b := (i : ℝ) + N + 1) ha hb]
+    field_simp [ne_of_gt hpos₁, ne_of_gt hpos₂]
+    ring_nf
+  calc
+    ∑ i ∈ range M, logPrimeCorrectionBound (i + (N + 1))
+        = ∑ i ∈ range M, (1 / ((i + N : ℕ) : ℝ) - 1 / ((i + N + 1 : ℕ) : ℝ)) := by
+      exact sum_congr rfl fun i _ ↦ hterm i
+    _ = 1 / (N : ℝ) - 1 / ((M + N : ℕ) : ℝ) := by
+      simpa [add_assoc, add_comm, add_left_comm] using
+        (Finset.sum_range_sub' (fun i : ℕ ↦ 1 / ((i + N : ℕ) : ℝ)) M)
+    _ ≤ 1 / (N : ℝ) := by
+      have hnonneg : 0 ≤ 1 / ((M + N : ℕ) : ℝ) := by positivity
+      linarith
+
+private lemma logPrimeCorrectionBound_tail_summable {N : ℕ} (hN : 1 ≤ N) :
+    Summable (fun i : ℕ ↦ logPrimeCorrectionBound (i + (N + 1))) := by
+  refine summable_of_sum_range_le (c := 1 / (N : ℝ))
+    (fun i ↦ logPrimeCorrectionBound_nonneg _) ?_
+  intro M
+  exact sum_logPrimeCorrectionBound_tail_le N M hN
+
+private lemma logPrimeCorrection_tail_abs_le {N : ℕ} (hN : 1 ≤ N) :
+    |∑' i : ℕ, logPrimeCorrection (i + (N + 1))| ≤ 1 / (N : ℝ) := by
+  have hs_corr : Summable (fun i : ℕ ↦ logPrimeCorrection (i + (N + 1))) :=
+    (summable_nat_add_iff (N + 1)).2 logPrimeCorrection_summable
+  have hs_norm : Summable (fun i : ℕ ↦ ‖logPrimeCorrection (i + (N + 1))‖) :=
+    hs_corr.norm
+  have hs_bound := logPrimeCorrectionBound_tail_summable hN
+  have hnorm :
+      |∑' i : ℕ, logPrimeCorrection (i + (N + 1))|
+        ≤ ∑' i : ℕ, |logPrimeCorrection (i + (N + 1))| := by
+    simpa [Real.norm_eq_abs] using norm_tsum_le_tsum_norm hs_norm
+  have hcmp :
+      (∑' i : ℕ, |logPrimeCorrection (i + (N + 1))|)
+        ≤ ∑' i : ℕ, logPrimeCorrectionBound (i + (N + 1)) := by
+    exact Summable.tsum_le_tsum
+      (fun i ↦ logPrimeCorrection_abs_le_bound (i + (N + 1)))
+      (by simpa [Real.norm_eq_abs] using hs_norm) hs_bound
+  have htail :
+      (∑' i : ℕ, logPrimeCorrectionBound (i + (N + 1))) ≤ 1 / (N : ℝ) :=
+    hs_bound.tsum_le_of_sum_range_le (sum_logPrimeCorrectionBound_tail_le N · hN)
+  exact hnorm.trans (hcmp.trans htail)
+
 lemma E₂Λ_sub_E₂p_tendsto :
     Tendsto (E₂Λ - E₂p) atTop (nhds 0) := by
   exact isLittleO_one_iff ℝ|>.mp <| E₂Λ.bound'.sub E₂p.bound'
@@ -1203,6 +1382,19 @@ theorem M.eq : M = γ + ∑' p : ℕ, if p.Prime then log (1 - 1 / p) + 1 / p el
 -/)]
 noncomputable def E₃ (x : ℝ) : ℝ := ∑ p ∈ Ioc 0 ⌊ x ⌋₊ with p.Prime, log (1 - (1:ℝ) / p) + log (log x) + eulerMascheroniConstant
 
+private lemma tsum_logPrimeCorrection_eq :
+    (∑' p : ℕ, logPrimeCorrection p) =
+      ∑' p : ℕ, if p.Prime then log (1 - (1 : ℝ) / p) + 1 / p else 0 := by
+  exact tsum_congr fun p ↦ by simp [logPrimeCorrection]
+
+private lemma E₃_eq_neg_E₂p_add_correction (x : ℝ) :
+    E₃ x =
+      -E₂p x +
+        (∑ n ∈ range (⌊x⌋₊ + 1), logPrimeCorrection n - ∑' n : ℕ, logPrimeCorrection n) := by
+  rw [E₃, E₂p, M.eq, γ.eq_eulerMascheroni, ← tsum_logPrimeCorrection_eq,
+    sum_logPrimeCorrection_range, sum_add_distrib]
+  ring
+
 @[blueprint
   "Mertens-third-theorem-error"
   (title := "Mertens' third theorem error term")
@@ -1237,7 +1429,67 @@ One can bound $\sum_{j \geq 2: p^j > x} \frac{j}{p^j}$ by $O(1/p^2)$ when $p > \
   -/)
   (discussion := 1330)]
 theorem E₃.abs_le : ∃ C, ∀ x, 2 ≤ x → |E₃ x| ≤ C / log x := by
-    sorry
+    use log 4 + 8 + E₁
+    intro x hx
+    let N := ⌊x⌋₊
+    have hlog_pos : 0 < log x := log_pos (by linarith)
+    have hN : 1 ≤ N := by
+      exact le_trans (by norm_num) (Nat.le_floor hx)
+    have hsplit := logPrimeCorrection_summable.sum_add_tsum_nat_add (N + 1)
+    have hcorr :
+        |(∑ n ∈ range (N + 1), logPrimeCorrection n) -
+          ∑' n : ℕ, logPrimeCorrection n| ≤ 1 / (N : ℝ) := by
+      have hdiff :
+          (∑ n ∈ range (N + 1), logPrimeCorrection n) -
+            ∑' n : ℕ, logPrimeCorrection n =
+              -(∑' i : ℕ, logPrimeCorrection (i + (N + 1))) := by
+        rw [← hsplit]
+        ring
+      rw [hdiff, abs_neg]
+      exact logPrimeCorrection_tail_abs_le hN
+    have hfloor_lower : x - 1 ≤ (N : ℝ) := by
+      have hxfloor : x < (N : ℝ) + 1 := by
+        simpa [N] using Nat.lt_floor_add_one x
+      dsimp [N]
+      linarith
+    have hN_pos_real : 0 < (N : ℝ) := by exact_mod_cast lt_of_lt_of_le zero_lt_one hN
+    have hN_ge_half : x / 2 ≤ (N : ℝ) := by linarith
+    have hcorr_log : 1 / (N : ℝ) ≤ 2 / log x := by
+      have hxpos : 0 < x := by linarith
+      have hhalf_pos : 0 < x / 2 := by positivity
+      have hto_x : 1 / (N : ℝ) ≤ 2 / x := by
+        rw [show 2 / x = 1 / (x / 2) by field_simp [ne_of_gt hxpos]]
+        exact (one_div_le_one_div hN_pos_real hhalf_pos).mpr hN_ge_half
+      have hlog_le_x : log x ≤ x := by
+        have := log_le_sub_one_of_pos hxpos
+        linarith
+      have htox_log : 2 / x ≤ 2 / log x := by
+        have hinv : 1 / x ≤ 1 / log x :=
+          (one_div_le_one_div hxpos hlog_pos).mpr hlog_le_x
+        calc
+          2 / x = 2 * (1 / x) := by ring
+          _ ≤ 2 * (1 / log x) := by
+            nlinarith
+          _ = 2 / log x := by ring
+      exact hto_x.trans htox_log
+    rw [E₃_eq_neg_E₂p_add_correction]
+    calc
+      |-E₂p x + ((∑ n ∈ range (N + 1), logPrimeCorrection n) -
+          ∑' n : ℕ, logPrimeCorrection n)|
+          ≤ |-E₂p x| + |(∑ n ∈ range (N + 1), logPrimeCorrection n) -
+              ∑' n : ℕ, logPrimeCorrection n| := by
+        exact abs_add_le (-E₂p x)
+          ((∑ n ∈ range (N + 1), logPrimeCorrection n) -
+            ∑' n : ℕ, logPrimeCorrection n)
+      _ = |E₂p x| + |(∑ n ∈ range (N + 1), logPrimeCorrection n) -
+              ∑' n : ℕ, logPrimeCorrection n| := by
+        rw [abs_neg]
+      _ ≤ (log 4 + 6 + E₁) / log x + 1 / (N : ℝ) := by
+        gcongr
+        exact E₂p.abs_le hx
+      _ ≤ (log 4 + 6 + E₁) / log x + 2 / log x := by
+        gcongr
+      _ = (log 4 + 8 + E₁) / log x := by ring
 
 @[blueprint
   "Mertens-third-theorem-error-le"]
